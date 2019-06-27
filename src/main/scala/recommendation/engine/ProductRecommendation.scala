@@ -11,7 +11,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.control.Breaks
 
 
-object RecommendationEngine {
+object ProductRecommendation {
 
   // TODO : Find a way to replace var with val
   var clientsWithOurClientCommonProducts: Map[ClientId, Set[Product]] = Map()

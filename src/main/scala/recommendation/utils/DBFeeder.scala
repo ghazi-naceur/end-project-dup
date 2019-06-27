@@ -6,6 +6,8 @@ import java.time.format.DateTimeFormatter
 import recommendation.model._
 import recommendation.service.impl.ClientCrud
 
+import scala.concurrent.Future
+
 object DBFeeder {
 
   val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
@@ -25,8 +27,8 @@ object DBFeeder {
     ClientId(6) -> Client(ClientId(6), Regular, Map(LocalDate.parse("07/07/2019", formatter) -> Product(ProductId(6)))),
   )
 
-  def generateHistory(): Unit = {
+  def generateHistory(): Future[List[Future[Client]]] = {
     // TODO : History generation should be automated and random, not hardcoded
-    ClientCrud.massCreate(mockClients)
+    Future.successful(ClientCrud.massCreate(mockClients))
   }
 }
