@@ -64,7 +64,7 @@ object DBFeeder {
     if (value > 2 && value < 10) {
       products += (LocalDate.parse("0" + value + "/0" + value + "/2019", formatter) -> Product(ProductId(randomNumber(value))))
       products += (LocalDate.parse("0" + (value + 1) + "/0" + (value - 1) + "/2019", formatter) -> Product(ProductId(randomNumber(value))))
-    } else if (value >= 10 && value < 12) {
+    } else if (value > 10 && value < 12) {
       products += (LocalDate.parse(value + "/" + value + "/2019", formatter) -> Product(ProductId(randomNumber(value))))
       products += (LocalDate.parse((value + 1) + "/" + (value - 1) + "/2019", formatter) -> Product(ProductId(randomNumber(value))))
     } else {
