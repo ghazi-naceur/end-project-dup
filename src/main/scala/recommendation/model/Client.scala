@@ -4,8 +4,8 @@ import java.time.LocalDate
 
 trait ClientType
 
-object Regular extends ClientType
-object Premium extends ClientType
+final object Regular extends ClientType
+final object Premium extends ClientType
 
 case class ClientId(id: Int) extends AnyVal
 
