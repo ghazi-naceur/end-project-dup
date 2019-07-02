@@ -6,7 +6,7 @@ import recommendation.service.Crud
 import scala.collection.mutable
 import scala.concurrent.Future
 
-object ClientCrud extends Crud{
+object ClientCrud extends Crud[Client, ClientId] {
 
   var clients: mutable.Map[ClientId, Client] = mutable.Map()
 
@@ -25,7 +25,7 @@ object ClientCrud extends Crud{
   }
 
   override def delete(clientId: ClientId): Future[Boolean] = {
-    if(clients.remove(clientId).isDefined) {
+    if (clients.remove(clientId).isDefined) {
       Future.successful(true)
     } else {
       Future.successful(false)

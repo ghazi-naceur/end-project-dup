@@ -61,7 +61,7 @@ object DBFeeder {
 
     var products: mutable.Map[LocalDate, Product] = mutable.Map()
 
-    if (value > 2 && value < 10) {
+    if (value > 2 && value < 9) {
       products += (LocalDate.parse("0" + value + "/0" + value + "/2019", formatter) -> Product(ProductId(randomNumber(value))))
       products += (LocalDate.parse("0" + (value + 1) + "/0" + (value - 1) + "/2019", formatter) -> Product(ProductId(randomNumber(value))))
     } else if (value > 10 && value < 12) {

@@ -9,105 +9,70 @@ import recommendation.service.impl.ClientCrud
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import scala.util.control.Breaks
 
 object ProductRecommendation {
 
-  // TODO : Find a way to replace var with val
-  // No vars, no mutations
-  var clientsWithOurClientCommonProducts: Map[ClientId, Set[Product]] = Map()
-  var highestProductOcc = 0
-  var neighborId: ClientId = _
-  var remainingClients: List[Client] = List()
-  var orderedNeighbors: mutable.Map[ClientId, Map[LocalDate, Product]] =
-    mutable.Map()
-
-  // Should be split a lot
   def recommend(clientId: ClientId): Future[ProductId] = {
 
-    // Should be a repository (ClientCrud) not a Map
-    val clients: mutable.Map[ClientId, Client] =
-      Await.result(ClientCrud.readAll(), Duration.Inf)
-    /*val clientRep: Crud = ???
-
-    clientRep.read(clientId...)*/
+    val clientRepo: Crud[Client, ClientId] = ClientCrud
+    val clients: mutable.Map[ClientId, Client] = Await.result(clientRepo.readAll(), Duration.Inf)
 
     if (clients.keys.toList.contains(clientId)) {
-      // Retrieve our client info
       val ourClient: Client = clients(clientId)
+      val remainingClients: List[Client] = extractRemainingClients(clients, ourClient)
+      val neighbors: Map[ClientId, Set[Product]] = extractNeighbors(remainingClients, ourClient)
 
-      // Setting the remaining clients depending on our client's type
-      // Should use pattern matching
-      /*ourClient.clientId match {
-        case Regular => ...
-      }*/
-      if (ourClient.clientType == Regular) {
-        remainingClients = clients.values.filter(_ != ourClient).toList
-      } else {
-        remainingClients = clients.values
-          .filter(c => c != ourClient && c.clientType == Premium)
-          .toList
-      }
-
-      // Obtaining the nb of common products between our client and the remaining ones
-      // Foreach is only for debug purpose
-      // Maybe you should return a clientsWithOurClientCommonProductsList ?
-      /*val clientsWithOurClientCommonProducts = List(???).map(f)*/
-      remainingClients.foreach(c => {
-        val commonProducts: Set[Product] =
-          c.products.values.toSet.intersect(ourClient.products.values.toSet)
-        if (commonProducts.nonEmpty) {
-          clientsWithOurClientCommonProducts += (c.clientId -> commonProducts)
-        }
-      })
-      // Sorting neighbors depending on the max number of common products with our client : (ClientId(3),3)
-      val neighbors: Map[ClientId, Set[Product]] = Map(
-        clientsWithOurClientCommonProducts.toSeq
-          .sortWith(_._2.size > _._2.size): _*)
-
-      // Sorting products with the purchase date
       if (neighbors.nonEmpty) {
-        // No explicit loops in Scala
-        /*neighbors.map((clientId, products) => ???)*/
-        for ((k, v) <- neighbors) {
-          val client = clients(k)
-          val products = Map(
-            client.products.toSeq.sortWith(_._1 isAfter _._1): _*)
-          orderedNeighbors += (k -> products)
-        }
+        val orderedNeighbors: Map[ClientId, Map[LocalDate, Product]] = orderNeighbors(neighbors, clients)
+        computeRecommendedProduct(orderedNeighbors, ourClient)
       } else {
         Future.failed(new Exception("No neighbors !"))
-      }
-
-      val loop = new Breaks
-      var recommendedProduct: Option[Product] = None
-
-      // No loops, no break => find / collectFirst / ...
-      loop.breakable {
-        orderedNeighbors.foreach(neighbor => {
-          neighbor._2.values.foreach(product => {
-            if (!ourClient.products.values.toList.contains(product)) {
-              recommendedProduct = Some(product)
-              loop.break()
-            }
-          })
-        })
-      }
-      // pattern matching ?
-      /*val opt: Option[Int] = ???
-      opt match {
-        case Some(value) => // Do something with "value"
-        case None        => // Do something if there is no content
-      }*/
-
-      if (recommendedProduct.isDefined) {
-        Future.successful(Some(recommendedProduct.get.productId).value)
-      } else {
-        Future.failed(new Exception("Nothing to recommend !"))
       }
     } else {
       Future.failed(new Exception(
         "Your client id is not found in the database ! Please make sure to provide a valid one."))
     }
+  }
+
+  private def computeRecommendedProduct(orderedNeighbors: Map[ClientId, Map[LocalDate, Product]], ourClient: Client): Future[ProductId] = {
+    val clientsProducts: List[Map[LocalDate, Product]] = orderedNeighbors.values.toList
+    val recommendedProductsList: List[Iterable[Option[Product]]] = clientsProducts.map {
+      products: Map[LocalDate, Product] => products.values.map(product => if (!ourClient.products.values.toList.contains(product)) Some(product) else None)
+    }
+    val productsList: List[Option[Product]] = recommendedProductsList.collectFirst { case p if p.nonEmpty => p.toList }.get
+    val recommendedProduct: Option[Product] = productsList(0)
+
+    recommendedProduct match {
+      case Some(product) => Future.successful(Some(product.productId).value)
+      case None => Future.failed(new Exception("Nothing to recommend !"))
+    }
+  }
+
+  private def orderNeighbors(neighbors: Map[ClientId, Set[Product]], clients: mutable.Map[ClientId, Client]): Map[ClientId, Map[LocalDate, Product]] = {
+    val orderedNeighbors: Map[ClientId, Map[LocalDate, Product]] = neighbors.map { case (clientId: ClientId, products: Set[Product]) =>
+      val client = clients(clientId)
+      val products = Map(client.products.toSeq.sortWith(_._1 isAfter _._1): _*)
+      (clientId, products)
+    }
+    orderedNeighbors
+  }
+
+  private def extractNeighbors(remainingClients: List[Client], ourClient: Client): Map[ClientId, Set[Product]] = {
+    // Obtaining the nb of common products between our client and the remaining ones
+    val listClientsWithOurClientCommonProducts: List[(ClientId, Set[Product])] = remainingClients
+      .map(client => (client.clientId, client.products.values.toSet.intersect(ourClient.products.values.toSet))).filter(_._2.nonEmpty)
+
+    // Sorting neighbors depending on the max number of common products with our client : (ClientId(3),3)
+    val neighbors: Map[ClientId, Set[Product]] = Map(listClientsWithOurClientCommonProducts.sortWith(_._2.size > _._2.size): _*)
+    neighbors
+  }
+
+  private def extractRemainingClients(clients: mutable.Map[ClientId, Client], ourClient: Client): List[Client] = {
+    // Setting the remaining clients depending on our client's type
+    val remainingClients: List[Client] = ourClient.clientType match {
+      case Regular => clients.values.filter(_ != ourClient).toList
+      case Premium => clients.values.filter(c => c != ourClient && c.clientType == Premium).toList
+    }
+    remainingClients
   }
 }
