@@ -3,14 +3,14 @@ package recommendation.service
 import scala.collection.mutable
 import scala.concurrent.Future
 
-trait Crud[Entity, EntityId] {
-  def create(client: Entity): Future[Entity]
+trait Crud[EntityId, Entity] {
+  def create(entity: Entity): Future[Entity]
 
-  def update(clientId: EntityId, client: Entity): Future[Entity]
+  def update(entityId: EntityId, entity: Entity): Future[Entity]
 
-  def read(clientId: EntityId): Future[Entity]
+  def read(entityId: EntityId): Future[Entity]
 
-  def delete(clientId: EntityId): Future[Boolean]
+  def delete(entityId: EntityId): Future[Boolean]
 
   def readAll(): Future[mutable.Map[EntityId, Entity]]
 }
