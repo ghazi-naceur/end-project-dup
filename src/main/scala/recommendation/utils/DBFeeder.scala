@@ -19,7 +19,7 @@ object DBFeeder {
     ClientId(4) -> Client(ClientId(4), Regular, Map(LocalDate.parse("05/01/2019", formatter) -> Product(ProductId(4)))),
     ClientId(5) -> Client(ClientId(5), Premium, Map(LocalDate.parse("06/01/2019", formatter) -> Product(ProductId(0)),
       LocalDate.parse("23/02/2019", formatter) -> Product(ProductId(2)))),
-    ClientId(1) -> Client(ClientId(1), Regular, Map(LocalDate.parse("01/01/2019", formatter) -> Product(ProductId(0)),
+    ClientId(1) -> Client(ClientId(1), Premium, Map(LocalDate.parse("01/01/2019", formatter) -> Product(ProductId(0)),
       LocalDate.parse("23/02/2019", formatter) -> Product(ProductId(2)),
       LocalDate.parse("13/03/2019", formatter) -> Product(ProductId(3)))),
     ClientId(2) -> Client(ClientId(2), Premium, Map(LocalDate.parse("03/01/2019", formatter) -> Product(ProductId(2)))),
@@ -27,7 +27,7 @@ object DBFeeder {
       LocalDate.parse("23/02/2019", formatter) -> Product(ProductId(1)),
       LocalDate.parse("13/03/2019", formatter) -> Product(ProductId(3)))),
     ClientId(6) -> Client(ClientId(6), Premium, Map(LocalDate.parse("07/07/2019", formatter) -> Product(ProductId(6)),
-      LocalDate.parse("07/07/2019", formatter) -> Product(ProductId(0))))
+      LocalDate.parse("07/08/2019", formatter) -> Product(ProductId(0))))
   )
 
   def createClientsRandomly(aValue: Int): Map[ClientId, Client] = {
