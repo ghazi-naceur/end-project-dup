@@ -11,17 +11,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
 
-  def findFirstNotAlreadyBoughtProduct(neighbor: (ClientId, Set[Product]), ourClient: Client): Future[Option[Product]] =
-    Future(neighbor._2.find((product: Product) =>
-      !ourClient.products.values.toList.contains(product)))
-
-  def computeRecommendedProduct(potentialRecommendations: List[Product]): Future[ProductId] =
-    if (potentialRecommendations.nonEmpty) {
-      Future.successful(potentialRecommendations.head.productId)
-    } else {
-      Future.failed(new Exception("Nothing to recommend !"))
-    }
-
   def recommend(clientId: ClientId): Future[ProductId] = {
 
     clientRepo.readAll().flatMap { clients =>
@@ -70,6 +59,19 @@ class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
         Future(clients.values
           .filter(c => c != ourClient && c.clientType == Premium)
           .toList)
+    }
+  }
+
+  private def findFirstNotAlreadyBoughtProduct(neighbor: (ClientId, Set[Product]), ourClient: Client): Future[Option[Product]] = {
+    Future(neighbor._2.find((product: Product) =>
+      !ourClient.products.values.toList.contains(product)))
+  }
+
+  private def computeRecommendedProduct(potentialRecommendations: List[Product]): Future[ProductId] = {
+    if (potentialRecommendations.nonEmpty) {
+      Future.successful(potentialRecommendations.head.productId)
+    } else {
+      Future.failed(new Exception("Nothing to recommend !"))
     }
   }
 }
