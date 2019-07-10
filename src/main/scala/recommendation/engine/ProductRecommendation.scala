@@ -48,17 +48,18 @@ class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
 
     val neighbors: List[(ClientId, Set[Product])] = listClientsWithOurClientCommonProducts.sortBy(_._2.size).reverse // from bigger to smaller
 
-    clientRepo.readAll().map { clients => {
-      neighbors.flatMap(neighbor => {
-        val client = clients(neighbor._1)
-        client.products.toList.map(_ => {
-          val productsWithPurchaseDate: Seq[(LocalDate, Product)] = Seq(client.products.toSeq.sortWith(_._1 isAfter _._1): _*)
-          val prods: Set[Product] = productsWithPurchaseDate.map(_._2).toSet
-          (client.clientId, prods)
-        })
-      })
-    }
-    }
+    clientRepo.readAll().map(clients => {
+      neighbors.iterator.flatMap(neighbor => {
+        clients.get(neighbor._1).collect {
+          case neighbor =>
+            neighbor.products.toList.map(_ => {
+              val productsWithPurchaseDate: Seq[(LocalDate, Product)] = Seq(neighbor.products.toSeq.sortWith(_._1 isAfter _._1): _*)
+              val prods: Set[Product] = productsWithPurchaseDate.map(_._2).toSet
+              (neighbor.clientId, prods)
+            })
+        }
+      }).toList.flatten
+    })
   }
 
   private def extractRemainingClients(clients: mutable.Map[ClientId, Client], ourClient: Client): Future[List[Client]] = {
