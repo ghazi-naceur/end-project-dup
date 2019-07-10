@@ -6,8 +6,7 @@ import recommendation.model._
 import recommendation.service.Crud
 
 import scala.collection.mutable
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
@@ -42,22 +41,24 @@ class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
     }
   }
 
-  private def extractNeighbors(remainingClients: List[Client], ourClient: Client): Future[List[(ClientId, Set[Product])]] = Future {
+  private def extractNeighbors(remainingClients: List[Client], ourClient: Client): Future[List[(ClientId, Set[Product])]] = {
     val listClientsWithOurClientCommonProducts: List[(ClientId, Set[Product])] =
       remainingClients.map(client => (client.clientId, client.products.values.toSet.intersect(ourClient.products.values.toSet)))
         .filter(_._2.nonEmpty) // TODO Could be done in one pass with .foldLeft
 
     val neighbors: List[(ClientId, Set[Product])] = listClientsWithOurClientCommonProducts.sortBy(_._2.size).reverse // from bigger to smaller
-    val clients: mutable.Map[ClientId, Client] = Await.result(clientRepo.readAll(), Duration.Inf)
-    neighbors.flatMap(neighbor => {
-      val client = clients(neighbor._1)
-      client.products.toList.map(_ => {
-        val productsWithPurchaseDate: Seq[(LocalDate, Product)] =
-          Seq(client.products.toSeq.sortWith(_._1 isAfter _._1): _*)
-        val prods: Set[Product] = productsWithPurchaseDate.map(_._2).toSet
-        (client.clientId, prods)
+
+    clientRepo.readAll().map { clients => {
+      neighbors.flatMap(neighbor => {
+        val client = clients(neighbor._1)
+        client.products.toList.map(_ => {
+          val productsWithPurchaseDate: Seq[(LocalDate, Product)] = Seq(client.products.toSeq.sortWith(_._1 isAfter _._1): _*)
+          val prods: Set[Product] = productsWithPurchaseDate.map(_._2).toSet
+          (client.clientId, prods)
+        })
       })
-    })
+    }
+    }
   }
 
   private def extractRemainingClients(clients: mutable.Map[ClientId, Client], ourClient: Client): Future[List[Client]] = {
