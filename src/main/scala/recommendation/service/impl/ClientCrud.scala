@@ -20,8 +20,8 @@ object ClientCrud extends Crud[ClientId, Client] {
     Future.successful(client)
   }
 
-  def read(clientId: ClientId): Future[Client] = {
-    Future.successful(clients(clientId))
+  def read(clientId: ClientId): Future[Option[Client]] = {
+    Future.successful(Option(clients(clientId)))
   }
 
   def delete(clientId: ClientId): Future[Boolean] = {
