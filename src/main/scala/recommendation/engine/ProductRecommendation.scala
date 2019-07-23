@@ -44,8 +44,9 @@ class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
           val remainingClients: Future[List[Client]] =
             extractRemainingClients(clients, ourClient)
           for {
+            allClients <- clientRepo.readAll()
             clients <- remainingClients
-            neighbors <- extractNeighbors(clients, ourClient)
+            neighbors <- extractNeighbors(allClients, clients, ourClient)
             products <- Future
               .sequence(neighbors.map(clientWithProducts =>
                 findFirstNotAlreadyBoughtProduct(clientWithProducts,
@@ -58,19 +59,10 @@ class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
   }
 
   private def extractNeighbors(
-      allClients: Map[ClientId, Client],
+      allClients: mutable.Map[ClientId, Client],
       remainingClients: List[Client],
       ourClient: Client): Future[List[(ClientId, Set[Product])]] = {
-    val listClientsWithOurClientCommonProducts: List[(ClientId, Set[Product])] = // Maybe you could retrieve a List[(ClientId, Map[LocalDate, Product])] to avoid having to request the DB again only to get products purchasing dates
-      remainingClients
-        .map(
-          client =>
-            (client.clientId,
-             client.products.values.toSet
-               .intersect(ourClient.products.values.toSet)))
-        .filter(_._2.nonEmpty) // TODO Could be done in one pass with .foldLeft
-
-    /*val listClientsWithOurClientCommonProducts2
+    val listClientsWithOurClientCommonProducts
       : List[(ClientId, Set[Product])] =
       remainingClients.foldLeft(List.empty[(ClientId, Set[Product])]) {
         (clients: List[(ClientId, Set[Product])], client: Client) =>
@@ -78,15 +70,13 @@ class ProductRecommendation(clientRepo: Crud[ClientId, Client]) {
             .intersect(ourClient.products.values.toSet)
           if (productsInCommon.isEmpty) clients
           else (client.clientId, productsInCommon) :: clients
-      }*/
+      }
 
     val neighbors: List[(ClientId, Set[Product])] =
       listClientsWithOurClientCommonProducts
-        .sortBy(_._2.size)
-        .reverse // from bigger to smaller // can be done with .sortBy { case (_, products) => - products.size }
+        .sortBy { case (_, products) => - products.size }
 
-    clientRepo // If you already have the dates, you only have to order here
-      .readAll() // Maybe use the clients you already fetched in the main function to avoid an other roundtrip to DB
+      Future { allClients }
       .map(clients => {
         neighbors
           .flatMap(neighbor => {
